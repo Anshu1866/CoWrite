@@ -73,7 +73,7 @@ export const Editor = ({ initialContent }: EditorProps) => {
     extensions: [
       liveblocks,
       StarterKit.configure({
-        history: false, // Liveblocks handles undo/redo now
+        undoRedo: false, // Liveblocks handles undo/redo now
       }),
       TextStyle,
       Color,
