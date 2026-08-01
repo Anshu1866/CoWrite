@@ -1,0 +1,130 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useMarginStore } from "@/store/use-margin-store";
+
+const PAGE_WIDTH = 816;
+const MINIMUM_SPACE = 100;
+const MARKERS_COUNT = 82;
+
+export const Ruler = () => {
+  const { leftMargin, setLeftMargin, rightMargin, setRightMargin } = useMarginStore();
+
+  const [isDraggingLeft, setIsDraggingLeft] = useState(false);
+  const [isDraggingRight, setIsDraggingRight] = useState(false);
+  const rulerRef = useRef<HTMLDivElement>(null);
+
+  const handleLeftMouseDown = () => setIsDraggingLeft(true);
+  const handleRightMouseDown = () => setIsDraggingRight(true);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((isDraggingLeft || isDraggingRight) && rulerRef.current) {
+      const container = rulerRef.current.querySelector("#ruler-container");
+      if (!container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const relativeX = e.clientX - containerRect.left;
+      const rawPosition = Math.max(0, Math.min(PAGE_WIDTH, relativeX));
+
+      if (isDraggingLeft) {
+        const maxLeftPosition = PAGE_WIDTH - rightMargin - MINIMUM_SPACE;
+        const newLeftPosition = Math.min(rawPosition, maxLeftPosition);
+        setLeftMargin(newLeftPosition);
+      } else if (isDraggingRight) {
+        const maxRightPosition = PAGE_WIDTH - (leftMargin + MINIMUM_SPACE);
+        const newRightPosition = Math.max(PAGE_WIDTH - rawPosition, 0);
+        const constrainedRightPosition = Math.min(newRightPosition, maxRightPosition);
+        setRightMargin(constrainedRightPosition);
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingLeft(false);
+    setIsDraggingRight(false);
+  };
+
+  const handleLeftDoubleClick = () => setLeftMargin(56);
+  const handleRightDoubleClick = () => setRightMargin(56);
+
+  return (
+    <div
+      ref={rulerRef}
+      className="w-[816px] mx-auto h-6 border-b border-neutral-300 flex items-end relative select-none print:hidden"
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      <div id="ruler-container" className="w-full h-full relative">
+        <Marker
+          position={leftMargin}
+          isLeft={true}
+          isDragging={isDraggingLeft}
+          onMouseDown={handleLeftMouseDown}
+          onDoubleClick={handleLeftDoubleClick}
+        />
+        <Marker
+          position={rightMargin}
+          isLeft={false}
+          isDragging={isDraggingRight}
+          onMouseDown={handleRightMouseDown}
+          onDoubleClick={handleRightDoubleClick}
+        />
+
+        <div className="absolute inset-x-0 bottom-0 h-full">
+          <div className="relative h-full w-[816px]">
+            {Array.from({ length: MARKERS_COUNT }).map((_, i) => {
+              const position = (i * PAGE_WIDTH) / (MARKERS_COUNT - 1);
+              return (
+                <div
+                  key={i}
+                  className="absolute bottom-0"
+                  style={{ left: `${position}px` }}
+                >
+                  {i % 10 === 0 && (
+                    <>
+                      <div className="absolute bottom-0 w-px h-2 bg-neutral-400" />
+                      <span className="absolute bottom-2 text-[9px] text-neutral-500 transform -translate-x-1/2">
+                        {i / 10 + 1}
+                      </span>
+                    </>
+                  )}
+                  {i % 5 === 0 && i % 10 !== 0 && (
+                    <div className="absolute bottom-0 w-px h-1.5 bg-neutral-400" />
+                  )}
+                  {i % 5 !== 0 && (
+                    <div className="absolute bottom-0 w-px h-1 bg-neutral-300" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface MarkerProps {
+  position: number;
+  isLeft: boolean;
+  isDragging: boolean;
+  onMouseDown: () => void;
+  onDoubleClick: () => void;
+}
+
+const Marker = ({ position, isLeft, isDragging, onMouseDown, onDoubleClick }: MarkerProps) => {
+  return (
+    <div
+      className="absolute top-0 w-4 h-full cursor-ew-resize z-10 group -ml-2"
+      style={{ [isLeft ? "left" : "right"]: `${position}px` }}
+      onMouseDown={onMouseDown}
+      onDoubleClick={onDoubleClick}
+    >
+      <div className="absolute left-1/2 top-0 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-blue-500" />
+      {isDragging && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-4 w-px h-[100vh] bg-blue-500 scale-y-[5000] origin-top" />
+      )}
+    </div>
+  );
+};
